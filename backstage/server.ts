@@ -530,7 +530,10 @@ function lanUrl(): string {
 }
 async function banner() {
   const b = t.banner;
-  const local = (process.env.LOCAL_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
+  // Palco e métricas: LOCAL_URL; senão o PUBLIC_URL fixo quando é https (serviço hospedado, onde localhost:PORT
+  // é só a porta interna); senão localhost (rodando no notebook).
+  const hosted = FIXED_URL.startsWith("https://") ? FIXED_URL : "";
+  const local = (process.env.LOCAL_URL || hosted || `http://localhost:${PORT}`).replace(/\/+$/, "");
   const q = AUTH ? `?token=${encodeURIComponent(TOKEN)}` : "";
   const reach = publicUrl || lanUrl();
   const remote = reach ? `${reach}${DECK_PREFIX}/remoto/${q}` : "";

@@ -323,3 +323,13 @@ test("PRESENTER_AUTH=off: sem token, para quando outra camada protege o prefixo"
   await deck.next(stageWhere());
   deck.close();
 });
+
+test("banner: com PUBLIC_URL https, palco e métricas mostram o endereço público; com http, localhost", async () => {
+  const host = await start({ PRESENTER_TOKEN: TOKEN, PUBLIC_URL: "https://exemplo.onrender.com" });
+  await sleep(200);
+  assert.match(host.output(), /palco\s+https:\/\/exemplo\.onrender\.com\/apresentador\/\?token=/);
+  assert.match(host.output(), /métricas\s+https:\/\/exemplo\.onrender\.com\/apresentador\/metricas/);
+  const lan = await start({ PRESENTER_TOKEN: TOKEN, PUBLIC_URL: "http://192.168.0.10:8080" });
+  await sleep(200);
+  assert.match(lan.output(), /palco\s+http:\/\/localhost:\d+\/apresentador\//);
+});
