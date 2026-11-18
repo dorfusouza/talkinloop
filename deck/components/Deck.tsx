@@ -282,7 +282,7 @@ export default function Deck({ index: initial }: { index: number }) {
         <Chrome kind={slide.kind} index={view.index} total={total} url={publicUrl} style={frameStyle} />
 
         <Live
-          index={view.index} title={slide.title} links={slide.links ?? []}
+          index={view.index} title={slide.title} links={slide.links ?? []} quiz={slide.quiz ?? null}
           step={view.step} steps={fragTotal} black={black} notes={notes} full={full} startedAt={startedAt} scale={scale} onPublicUrl={onPublicUrl}
         />
       </div>

@@ -9,7 +9,7 @@ import { WebSocketServer } from "ws";
 import type { WebSocket } from "ws";
 import { httpUrl, loadConfig } from "./config.ts";
 import { createMetrics } from "./metrics.ts";
-import type { PointerMessage, Poll, PublicState, RemoteKey, ServerMessage, Share, StageState, ViewMessage, Vote } from "./protocol.ts";
+import type { Board, PointerMessage, Poll, PublicState, Quiz, QuizState, RemoteKey, ServerMessage, Share, StageState, ViewMessage, Vote, YouMessage } from "./protocol.ts";
 import { renderReport } from "./report.ts";
 
 const PORT = Number(process.env.PORT || 8080);
@@ -65,6 +65,35 @@ let shot: Buffer | null = null;
 const SHOT_MAX = 2 * 1024 * 1024;
 const votes = new Map<string, Vote>();
 let lastHumanReaction = 0;
+
+// Quiz e placar. A pergunta vem do slide atual; quem responde é identificado pelo mesmo id do
+// navegador usado na votação, então recarregar a página não apaga os pontos.
+const QUIZ_OFF: QuizState = { id: 0, phase: "off", question: "", options: [], counts: [], answered: 0, answer: null };
+let slideQuiz: Quiz | null = null;   // o quiz do slide que está no telão
+let quiz: QuizState = { ...QUIZ_OFF };
+let quizKey = -1;                     // a resposta certa do quiz aberto; só vai para quiz.answer ao revelar
+const answers = new Map<string, { choice: number; at: number }>();
+const players = new Map<string, { name: string; points: number; last: YouMessage["quiz"] }>();
+let boardOn = false;
+const QUIZ_POINTS = 100, QUIZ_BONUS = 50, QUIZ_BONUS_STEP = 10; // certo: 100 + bônus pela ordem (1º +50, 2º +40...)
+
+function parseQuiz(v: unknown): Quiz | null {
+  if (typeof v !== "object" || v === null) return null;
+  const { question, options, answer } = v as Record<string, unknown>;
+  if (typeof question !== "string" || !Array.isArray(options)) return null;
+  const opts = options.filter((o): o is string => typeof o === "string").map((o) => o.trim().slice(0, 160)).filter(Boolean);
+  if (opts.length < 2 || opts.length > 6 || opts.length !== options.length) return null;
+  if (!Number.isInteger(answer) || (answer as number) < 0 || (answer as number) >= opts.length) return null;
+  return { question: question.trim().slice(0, 300), options: opts, answer: answer as number };
+}
+const cleanName = (v: unknown): string | null => {
+  if (typeof v !== "string") return null;
+  const n = v.replace(/\s+/g, " ").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 24);
+  return n || null;
+};
+const ranking = () => [...players.values()].filter((p) => p.points > 0).sort((a, b) => b.points - a.points);
+const board = (): Board => ({ on: boardOn, top: ranking().slice(0, 10).map(({ name, points }) => ({ name, points })), players: players.size });
+const publicQuiz = (): QuizState => (quiz.phase === "open" ? { ...quiz, counts: [] } : quiz);
 
 const metrics = createMetrics({ dataDir: process.env.DATA_DIR, getAudience: () => audience() });
 const validCid = (c: unknown): string | null => (typeof c === "string" && /^[a-z0-9]{8,64}$/i.test(c) ? c : null);
@@ -195,8 +224,8 @@ const decks = () => clients((c) => c.sub === "deck");
 // e o BroadcastChannel do Deck faria a outra andar de novo. Preferência pela janela sem o painel de
 // notas, que é a do projetor (onde o vídeo precisa tocar).
 const primaryDeck = () => { const d = decks(); return d.find((c) => !c.notes) ?? d[0]; };
-const publicState = (): PublicState => ({ slide: state.slide, links: state.links, poll: state.poll, share: state.share });
-const stageState = (): StageState => ({ ...publicState(), connected: audience(), bot: state.bot, publicUrl });
+const publicState = (): PublicState => ({ slide: state.slide, links: state.links, poll: state.poll, share: state.share, quiz: publicQuiz(), board: board() });
+const stageState = (): StageState => ({ ...publicState(), quiz, connected: audience(), bot: state.bot, publicUrl });
 const stateFor = (c: Client): ServerMessage => (c.role === "stage" ? { type: "state", state: stageState() } : { type: "state", state: publicState() });
 const send = (c: Client, msg: ServerMessage) => { if (isOpen(c)) c.send(JSON.stringify(msg)); };
 const broadcast = (msg: ServerMessage, filter: (c: Client) => boolean = () => true) => {
@@ -240,11 +269,65 @@ setInterval(() => {
 
 const sendStage = () => broadcast({ type: "state", state: stageState() }, (c) => c.role === "stage");
 
+// Cada socket fica com o primeiro id que mandou, para não dar para inflar trocando o id.
+const cidOf = (ws: Client, m: Record<string, unknown>) => (ws.cid ??= ws.connCid || validCid(m.cid) || `ws:${Math.random()}`);
+function youFor(cid: string): YouMessage {
+  const p = players.get(cid);
+  const i = p ? ranking().indexOf(p) : -1;
+  return { type: "you", name: p?.name ?? "", points: p?.points ?? 0, rank: i >= 0 ? i + 1 : null, quiz: p?.last ?? null };
+}
+const sendYou = (cid: string) => {
+  const msg = youFor(cid);
+  for (const c of clients((c) => c.role === "audience" && (c.cid ?? c.connCid) === cid)) send(c, msg);
+};
+const player = (cid: string) => {
+  let p = players.get(cid);
+  if (!p) { p = { name: `${t.audience.anonymous} ${players.size + 1}`, points: 0, last: null }; players.set(cid, p); }
+  return p;
+};
+
+function quizCommand(action: unknown) {
+  if (action === "open") {
+    if (!slideQuiz || quiz.phase === "open") return;
+    quiz = { id: quiz.id + 1, phase: "open", question: slideQuiz.question, options: slideQuiz.options, counts: slideQuiz.options.map(() => 0), answered: 0, answer: null };
+    quizKey = slideQuiz.answer;
+    answers.clear();
+    boardOn = false;
+  } else if (action === "reveal") {
+    if (quiz.phase !== "open") return;
+    quiz = { ...quiz, phase: "reveal", answer: quizKey };
+    // pontua: certo vale 100, mais um bônus para quem acertou primeiro
+    const right = [...answers].filter(([, a]) => a.choice === quizKey).sort((a, b) => a[1].at - b[1].at);
+    const gained = new Map(right.map(([cid], rank) => [cid, QUIZ_POINTS + Math.max(0, QUIZ_BONUS - rank * QUIZ_BONUS_STEP)]));
+    for (const [cid, a] of answers) {
+      const p = player(cid);
+      const g = gained.get(cid) ?? 0;
+      p.points += g;
+      p.last = { id: quiz.id, choice: a.choice, correct: g > 0, gained: g };
+    }
+    for (const [cid, p] of players) if (!answers.has(cid)) p.last = { id: quiz.id, choice: null, correct: null, gained: 0 };
+    for (const cid of players.keys()) sendYou(cid);
+  } else if (action === "close") {
+    if (quiz.phase === "off") return;
+    quiz = { ...quiz, phase: "off" };
+  } else if (action === "board") {
+    boardOn = !boardOn;
+  } else if (action === "reset") {
+    players.clear();
+    answers.clear();
+    boardOn = false;
+    quiz = { ...QUIZ_OFF, id: quiz.id };
+    for (const c of clients((c) => c.role === "audience")) send(c, { type: "you", name: "", points: 0, rank: null, quiz: null });
+  } else return;
+  sendState();
+}
+
 wss.on("connection", (ws: Client) => {
   ws.on("pong", () => { ws.alive = true; });
   send(ws, stateFor(ws));
   sendStage();
   if (ws.role === "audience") { metrics.device(ws.connCid); metrics.audienceChanged(audience()); }
+  if (ws.role === "audience" && ws.connCid && players.has(ws.connCid)) send(ws, youFor(ws.connCid));
   if (ws.role === "stage") sendView();
 
   ws.on("message", (raw) => {
@@ -273,17 +356,46 @@ wss.on("connection", (ws: Client) => {
       case "vote": {
         if (!state.poll.open || (m.choice !== "up" && m.choice !== "down")) return;
         // O celular manda um id que guarda no navegador: reconectar (tela apagada) não vira voto novo.
-        // Cada socket fica com o primeiro id que mandou, para não dar para inflar trocando o id.
-        ws.cid ??= ws.connCid || validCid(m.cid) || `ws:${Math.random()}`;
-        const prev = votes.get(ws.cid);
+        const cid = cidOf(ws, m);
+        const prev = votes.get(cid);
         if (prev === m.choice) return;
         if (prev) state.poll[prev]--;
         state.poll[m.choice]++;
-        votes.set(ws.cid, m.choice);
+        votes.set(cid, m.choice);
         metrics.pollVote(state.poll);
         sendStateSoon();
         break;
       }
+      case "join": {
+        if (stage) return;
+        const name = cleanName(m.name);
+        if (!name) return;
+        const cid = cidOf(ws, m);
+        const p = players.get(cid);
+        if (p) p.name = name;
+        else players.set(cid, { name, points: 0, last: null });
+        sendYou(cid);
+        sendStateSoon();
+        break;
+      }
+      case "answer": {
+        // uma resposta por aluno e por quiz: a primeira vale (é ela que conta para o bônus de rapidez)
+        if (stage || quiz.phase !== "open" || !Number.isInteger(m.choice)) return;
+        const choice = m.choice as number;
+        if (choice < 0 || choice >= quiz.options.length) return;
+        const cid = cidOf(ws, m);
+        if (answers.has(cid)) return;
+        answers.set(cid, { choice, at: Date.now() });
+        player(cid);
+        quiz.counts[choice] = (quiz.counts[choice] ?? 0) + 1;
+        quiz.answered++;
+        sendStateSoon();
+        break;
+      }
+      case "quiz":
+        if (!stage) return;
+        quizCommand(m.action);
+        break;
 
       case "hello":
         if (!stage) return;
@@ -294,6 +406,7 @@ wss.on("connection", (ws: Client) => {
       case "slide": {
         if (ws.sub !== "deck") return;
         state.slide = { index: int(m.index), title: String(m.title || "") };
+        slideQuiz = parseQuiz(m.quiz);
         metrics.slide(state.slide.index, state.slide.title);
         for (const l of Array.isArray(m.links) ? m.links as unknown[] : []) {
           if (typeof l !== "object" || l === null) continue;

@@ -26,7 +26,7 @@ export default function Remote() {
   const [online, setOnline] = useState(false);
   const [view, setView] = useState<View | null>(null);
   const viewAt = useRef(0);
-  const [room, setRoom] = useState<Room>({ slide: { index: 0, title: "" }, links: [], poll: { id: 0, open: false, up: 0, down: 0 }, share: { on: false, v: 0 }, connected: 0, bot: false, publicUrl: "" });
+  const [room, setRoom] = useState<Room>({ slide: { index: 0, title: "" }, links: [], poll: { id: 0, open: false, up: 0, down: 0 }, share: { on: false, v: 0 }, quiz: { id: 0, phase: "off", question: "", options: [], counts: [], answered: 0, answer: null }, board: { on: false, top: [], players: 0 }, connected: 0, bot: false, publicUrl: "" });
   const [now, setNow] = useState(0);
   const cheers = useRef<{ t: number; n: number }[]>([]);
   const [heat, setHeat] = useState(0);
@@ -235,6 +235,40 @@ export default function Remote() {
           <span>👍 <b>{room.poll.up}</b></span>
           <div className="bar"><div style={{ width: `${room.poll.up + room.poll.down ? Math.round((room.poll.up / (room.poll.up + room.poll.down)) * 100) : 50}%` }} /></div>
           <span><b>{room.poll.down}</b> 👎</span>
+        </div>
+      )}
+
+      {room.quiz.phase !== "off" && (
+        <div className="vote-strip quiz-strip" role="status">
+          <span>❓ <b>{room.quiz.answered}</b> {room.quiz.answered === 1 ? t.deck.answer : t.deck.answers}</span>
+          <span className="quiz-counts">
+            {room.quiz.options.map((_, i) => (
+              <span key={i} className={room.quiz.phase === "reveal" && i === room.quiz.answer ? "right" : ""}>{"ABCDEF"[i]} {room.quiz.counts[i] ?? 0}</span>
+            ))}
+          </span>
+        </div>
+      )}
+
+      {(slide.quiz || room.quiz.phase !== "off" || room.board.on) && (
+        <div className="tools quiz-tools">
+          <button
+            className={room.quiz.phase !== "off" ? "on" : ""}
+            disabled={room.quiz.phase === "off" && !slide.quiz}
+            onClick={() => { send({ type: "quiz", action: room.quiz.phase === "open" ? "reveal" : room.quiz.phase === "reveal" ? "close" : "open" }); buzz(); }}
+            aria-label={t.remote.quizLabel}
+          >
+            {room.quiz.phase === "open" ? t.remote.quizReveal : room.quiz.phase === "reveal" ? t.remote.quizClose : t.remote.quizOpen}
+          </button>
+          <button
+            className={room.board.on ? "on" : ""}
+            onClick={() => { send({ type: "quiz", action: "board" }); buzz(); }}
+            aria-label={t.remote.boardLabel}
+          >
+            {t.remote.board} · {room.board.players}
+          </button>
+          {room.board.on && (
+            <button onClick={() => { if (window.confirm(t.remote.boardResetConfirm)) send({ type: "quiz", action: "reset" }); }}>♻ {t.remote.boardReset}</button>
+          )}
         </div>
       )}
 

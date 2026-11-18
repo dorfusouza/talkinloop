@@ -25,6 +25,6 @@ Escreva a fala como você falaria, em frases curtas.
 
 ## Fechamento
 
-### 13 · Encerramento
+### 14 · Encerramento
 
 A frase final, e uma pausa antes das perguntas.

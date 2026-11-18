@@ -2,7 +2,7 @@ import { config } from "@/components/config";
 
 const ptBR = {
   deck: {
-    help: "← → espaço · N notas · O visão geral · F tela cheia · T tema · B tela preta",
+    help: "← → espaço · N notas · O visão geral · F tela cheia · T tema · B tela preta · Q quiz · K placar",
     notesKeys: "← → navegar · B tela preta · R zera o relógio · O visão geral",
     script: "roteiro",
     step: "passo",
@@ -13,6 +13,11 @@ const ptBR = {
     poweredBy: "feito com Talk in Loop",
     yes: "sim",
     no: "não",
+    quiz: "Quiz",
+    answer: "resposta",
+    answers: "respostas",
+    board: "Placar",
+    boardEmpty: "Ninguém pontuou ainda",
   },
   remote: {
     title: "Passador",
@@ -43,6 +48,14 @@ const ptBR = {
     closePoll: "📊 fechar",
     openPollLabel: "Abrir votação",
     closePollLabel: "Fechar votação",
+    quizOpen: "❓ quiz",
+    quizReveal: "✅ revelar",
+    quizClose: "❓ fechar",
+    quizLabel: "Quiz: abrir, revelar a resposta certa, fechar",
+    board: "🏆 placar",
+    boardLabel: "Mostrar o placar no telão",
+    boardReset: "zerar placar",
+    boardResetConfirm: "Zerar os pontos de todos os alunos?",
     video: "🎬 vídeo",
     botLabel: "Robô das reações",
     back: "Voltar",
@@ -62,7 +75,7 @@ export type Messages = typeof ptBR;
 
 const en: Messages = {
   deck: {
-    help: "← → space · N notes · O overview · F fullscreen · T theme · B black screen",
+    help: "← → space · N notes · O overview · F fullscreen · T theme · B black screen · Q quiz · K scores",
     notesKeys: "← → navigate · B black screen · R reset the clock · O overview",
     script: "script",
     step: "step",
@@ -73,6 +86,11 @@ const en: Messages = {
     poweredBy: "powered by Talk in Loop",
     yes: "yes",
     no: "no",
+    quiz: "Quiz",
+    answer: "answer",
+    answers: "answers",
+    board: "Scoreboard",
+    boardEmpty: "Nobody has scored yet",
   },
   remote: {
     title: "Remote",
@@ -103,6 +121,14 @@ const en: Messages = {
     closePoll: "📊 close",
     openPollLabel: "Open poll",
     closePollLabel: "Close poll",
+    quizOpen: "❓ quiz",
+    quizReveal: "✅ reveal",
+    quizClose: "❓ close",
+    quizLabel: "Quiz: open, reveal the right answer, close",
+    board: "🏆 scores",
+    boardLabel: "Show the scoreboard on the big screen",
+    boardReset: "reset scores",
+    boardResetConfirm: "Reset everyone's points?",
     video: "🎬 video",
     botLabel: "Reaction bot",
     back: "Back",

@@ -55,6 +55,7 @@ motor enxerga a apresentação só por `components/content.ts`, e o contrato est
   kind: "title",              // opcional: "title" | "statement" | "final"
   top: true,                  // opcional: alinha ao topo e reduz o título (slide com muito conteúdo)
   links: [{ label: "Texto", url: "https://..." }], // liberados para a plateia a partir deste slide
+  quiz: { question: "Pergunta?", options: ["A", "B", "C"], answer: 1 }, // opcional: quiz valendo pontos
   content: (<><h2>Título</h2><p className="lead">Texto</p></>),
   notes: <p>Lembrete para o apresentador.</p>,
 }
@@ -82,6 +83,12 @@ funcionando de cada bloco abaixo.
 - **Vídeo:** `<Demo src="/demo/x.mp4" fallback={...} />`; o arquivo vai em `public/demo/`.
 - **Imagem:** arquivo em `public/` e `src={`${BASE}/arquivo.png`}`, com `BASE` de `@/components/base`, dentro de `<div className="diagram">`. Sempre com `alt`.
 - **`kind: "title"` e `"final"`** fazem o QR da plateia crescer; use no primeiro e no último slide.
+- **Quiz:** o campo `quiz` do slide tem a pergunta, de 2 a 6 opções e `answer`, o índice da certa
+  (começa em 0). Com o slide no telão, a tecla `Q` (ou o botão ❓ do passador) abre o quiz, `Q` de
+  novo revela a certa e pontua, e `Q` mais uma vez esconde. Cada aluno digita o nome uma vez na
+  página da plateia e responde uma vez por quiz; acertar vale 100 pontos, mais um bônus para os
+  primeiros (+50, +40, +30, +20, +10). A tecla `K` (ou 🏆 no passador) mostra o placar; o passador
+  tem o botão de zerar. Os pontos ficam na memória do backstage: reiniciar o servidor zera.
 
 ### O que a moldura já ocupa
 
@@ -91,6 +98,8 @@ Todo slide tem, por cima do conteúdo e sem você escrever nada:
 - **o QR da plateia**, pequeno (112 px) no canto inferior direito, com o endereço e o contador `04 / 12` ao lado.
 - em `title` e `final`, **o QR grande** ocupa a metade direita, o contador some e o texto fica limitado a 940 px de largura.
 - **o placar da votação**, enquanto ela está aberta, numa faixa no rodapé central. A pergunta pode estar escrita no slide ou só ser falada; não ponha nada essencial nos últimos 120 px do slide de uma votação.
+- **o painel do quiz**, enquanto ele está aberto ou revelado, no rodapé central e mais alto (cerca de 340 px com quatro opções). Num slide de quiz, use `top: true` e deixe a metade de baixo livre.
+- **o placar do quiz** (tecla `K`), um cartão no centro, por cima de tudo.
 
 O QR só existe com o backstage no ar. No PDF ele sai apenas se houver endereço fixo, então para conferir se algum conteúdo passa por baixo dele gere com `NEXT_PUBLIC_QR_URL=https://example.com TALK=<nome> npm run png`.
 

@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import { WebSocket } from "ws";
-import type { BurstMessage, ClientMessage, PublicState, RemoteKey, ServerMessage, StageState, ViewMessage } from "../protocol.ts";
+import type { BurstMessage, ClientMessage, PublicState, RemoteKey, ServerMessage, StageState, ViewMessage, YouMessage } from "../protocol.ts";
 
 const TOKEN = "token-de-teste-123456";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "backstage-test-"));
@@ -199,6 +199,71 @@ test("votação: o palco abre, a plateia vota uma vez por celular e pode trocar"
   assert.equal(s.state.poll.up, 0);
   deck.say({ type: "poll", open: false });
   deck.close(); phone.close();
+});
+
+test("quiz: a certa só aparece ao revelar, quem acerta primeiro ganha mais e o placar ordena", async () => {
+  const deck = await connect(srv.port, "/apresentador/ws", { cookie });
+  const ana = await connect(srv.port, "/ws?cid=alunaana0001");
+  const bia = await connect(srv.port, "/ws?cid=alunabia0001");
+  const caio = await connect(srv.port, "/ws?cid=alunocaio001");
+  const isYou = (f: (m: YouMessage) => boolean) => (m: ServerMessage): m is YouMessage => m.type === "you" && f(m);
+
+  // slide sem quiz: abrir não faz nada; quiz malformado também é ignorado
+  deck.say({ type: "slide", index: 3, title: "Sem quiz", links: [] });
+  deck.say({ type: "quiz", action: "open" });
+  deck.raw({ type: "slide", index: 4, title: "Quiz ruim", links: [], quiz: { question: "?", options: ["só uma"], answer: 0 } });
+  deck.say({ type: "quiz", action: "open" });
+  await sleep(150);
+  deck.say({ type: "slide", index: 5, title: "Quiz", links: [], quiz: { question: "2 + 2?", options: ["3", "4", "5"], answer: 1 } });
+  await ana.next(publicWhere((s) => s.slide.title === "Quiz"));
+  deck.say({ type: "quiz", action: "open" });
+  const opened = await ana.next(publicWhere((s) => s.quiz.phase === "open"));
+  assert.equal(opened.state.quiz.id, 1, "os slides sem quiz válido não abriram nada");
+  assert.deepEqual(opened.state.quiz.options, ["3", "4", "5"]);
+  assert.equal(opened.state.quiz.answer, null, "a resposta certa não vaza antes da hora");
+  assert.deepEqual(opened.state.quiz.counts, [], "a plateia não vê a distribuição com o quiz aberto");
+
+  ana.say({ type: "join", name: "  Ana\n\tSilva  " });
+  await ana.next(isYou((m) => m.name === "Ana Silva"));
+  bia.say({ type: "join", name: "Bia" });
+  caio.say({ type: "join", name: "Caio" });
+  ana.say({ type: "answer", choice: 1 });
+  await sleep(30);
+  bia.say({ type: "answer", choice: 1 });
+  bia.say({ type: "answer", choice: 0 });   // segunda resposta não vale
+  caio.say({ type: "answer", choice: 2 });
+  caio.raw({ type: "answer", choice: 9 });  // fora da lista
+  ana.say({ type: "quiz", action: "reveal" }); // a plateia não comanda
+  const counted = await deck.next(stageWhere((s) => s.quiz.answered === 3));
+  assert.deepEqual(counted.state.quiz.counts, [0, 2, 1]);
+  assert.equal(counted.state.quiz.phase, "open");
+
+  deck.say({ type: "quiz", action: "reveal" });
+  const revealed = await bia.next(publicWhere((s) => s.quiz.phase === "reveal"));
+  assert.equal(revealed.state.quiz.answer, 1);
+  assert.deepEqual(revealed.state.quiz.counts, [0, 2, 1]);
+  const a = await ana.next(isYou((m) => m.quiz?.id === 1));
+  const b = await bia.next(isYou((m) => m.quiz?.id === 1));
+  const c = await caio.next(isYou((m) => m.quiz?.id === 1));
+  assert.deepEqual([a.points, a.rank, a.quiz?.correct], [150, 1, true]);
+  assert.deepEqual([b.points, b.rank, b.quiz?.correct], [140, 2, true]);
+  assert.deepEqual([c.points, c.rank, c.quiz?.correct], [0, null, false]);
+
+  deck.say({ type: "quiz", action: "board" });
+  const shown = await caio.next(publicWhere((s) => s.board.on));
+  assert.deepEqual(shown.state.board.top, [{ name: "Ana Silva", points: 150 }, { name: "Bia", points: 140 }]);
+  assert.equal(shown.state.board.players, 3);
+
+  // recarregar a página (mesmo id) devolve nome e pontos
+  ana.close();
+  const ana2 = await connect(srv.port, "/ws?cid=alunaana0001");
+  const back = await ana2.next(isYou(() => true));
+  assert.deepEqual([back.name, back.points], ["Ana Silva", 150]);
+
+  deck.say({ type: "quiz", action: "reset" });
+  await deck.next(stageWhere((s) => s.board.players === 0 && !s.board.on));
+  deck.say({ type: "quiz", action: "close" });
+  deck.close(); ana2.close(); bia.close(); caio.close();
 });
 
 test("o deck libera links para a plateia; entrada malformada não derruba o servidor", async () => {

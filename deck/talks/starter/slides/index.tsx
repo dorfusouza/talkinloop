@@ -157,6 +157,18 @@ export const slides: SlideBase[] = [
     notes: <p>Tecla P abre e fecha a votação, em qualquer slide. A pergunta é falada, não escrita. Tecla L liga o robô, que reage se a sala ficar em silêncio.</p>,
   },
   {
+    title: "Quiz", block: "Ao vivo", minute: "7:30", top: true,
+    quiz: { question: "Qual destas linguagens roda no navegador sem instalar nada?", options: ["Java", "JavaScript", "C#", "Python"], answer: 1 },
+    content: (
+      <>
+        <p className="eyebrow">Quiz valendo pontos</p>
+        <h2>Qual destas linguagens roda no <em>navegador</em> sem instalar nada?</h2>
+        <p className="lead">Responda pela página da plateia: quem acerta primeiro ganha mais pontos.</p>
+      </>
+    ),
+    notes: <p>Tecla Q abre o quiz deste slide; Q de novo revela a certa e pontua; Q mais uma vez esconde. Tecla K mostra o placar. A pergunta, as opções e a certa ficam no campo quiz do slide.</p>,
+  },
+  {
     title: "Vídeo", block: "Ao vivo", minute: "8:00",
     content: (
       <>

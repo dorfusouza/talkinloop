@@ -37,6 +37,34 @@
   .vote button { font-size: 52px; line-height: 1; padding: 22px 0; background: var(--surface); border: 3px solid var(--line); border-radius: 18px; touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: transform .1s; }
   .vote button:active { transform: scale(.94); }
   .vote button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .me { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 15px; color: var(--muted); }
+  .me b { color: var(--fg); }
+  .me .pts { font: 700 15px ui-monospace, Menlo, monospace; color: var(--accent); }
+  .me button { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; font: inherit; cursor: pointer; }
+  .me[hidden], .name[hidden], .quiz[hidden], .board[hidden] { display: none; }
+  .name { display: flex; gap: 8px; margin: 6px 0 10px; }
+  .name input { flex: 1; min-width: 0; padding: 12px 14px; font: inherit; color: var(--fg); background: var(--surface); border: 2px solid var(--line); border-radius: 12px; }
+  .name input:focus { outline: none; border-color: var(--accent); }
+  .name button { padding: 12px 18px; font: 700 16px inherit; color: #000; background: var(--accent); border: 0; border-radius: 12px; cursor: pointer; }
+  .quiz { margin: 6px 0 10px; padding: 14px; border: 2px solid var(--accent); border-radius: 14px; background: var(--surface); animation: pop .35s ease-out both; }
+  .quiz p.q { margin: 0 0 12px; font-weight: 700; font-size: 18px; white-space: pre-wrap; }
+  .quiz .opts { display: grid; gap: 8px; }
+  .quiz .opts button { display: grid; grid-template-columns: 2.2em 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; text-align: left; font: inherit; font-size: 16px; color: var(--fg); background: var(--bg); border: 2px solid var(--line); border-radius: 12px; cursor: pointer; touch-action: manipulation; }
+  .quiz .opts button:disabled { cursor: default; }
+  .quiz .opts button i { font: 800 16px ui-monospace, Menlo, monospace; font-style: normal; color: var(--accent); }
+  .quiz .opts button small { color: var(--muted); font: 600 13px ui-monospace, Menlo, monospace; }
+  .quiz .opts button.mine { border-color: var(--accent); background: var(--accent-soft); }
+  .quiz .opts button.right { border-color: var(--ok, #6cc48f); background: color-mix(in srgb, var(--ok, #6cc48f) 22%, var(--bg)); }
+  .quiz .opts button.wrong { border-color: var(--warn, #e36b5f); }
+  .quiz .msg { margin: 10px 0 0; font-size: 15px; color: var(--muted); }
+  .quiz .msg:empty { display: none; }
+  .quiz .msg b { color: var(--fg); }
+  .board { margin: 6px 0 10px; padding: 14px; border: 2px solid var(--line); border-radius: 14px; background: var(--surface); }
+  .board ol { margin: 0; padding: 0 0 0 1.8em; }
+  .board li { padding: 4px 0; }
+  .board li span { float: right; font: 700 15px ui-monospace, Menlo, monospace; color: var(--accent); }
+  .board li.me-row { color: var(--accent); font-weight: 700; }
+  .board .empty { color: var(--muted); font-size: 15px; }
   @keyframes pop { from { opacity: 0; transform: scale(.96); } }
   footer { padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 2px solid var(--line); display: grid; grid-template-columns: repeat(var(--n, 4), 1fr); gap: 10px; position: sticky; bottom: 0; }
   footer button { font-size: 34px; line-height: 1; padding: 14px 0; background: var(--bg); border: 2px solid var(--line); border-radius: 16px; color: var(--fg); touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: transform .1s; }
@@ -59,8 +87,23 @@
     <small>{{event}}</small>
     <h1>{{title}}</h1>
     <div class="now"><span>{{t.nowOnScreen}}</span><b id="slide">—</b></div>
+    <div class="me" id="me" hidden><b id="me-name"></b><span class="pts" id="me-pts"></span><button type="button" id="me-change">{{t.nameChange}}</button></div>
   </header>
   <main>
+    <form class="name" id="name" hidden>
+      <input id="name-input" maxlength="24" autocomplete="nickname" placeholder="{{t.namePlaceholder}}" aria-label="{{t.nameTitle}}">
+      <button>{{t.nameSave}}</button>
+    </form>
+    <section class="quiz" id="quiz" hidden aria-live="polite">
+      <p class="q" id="quiz-q"></p>
+      <div class="opts" id="quiz-opts"></div>
+      <p class="msg" id="quiz-msg"></p>
+    </section>
+    <section class="board" id="board" hidden>
+      <h2 style="margin-top:0">🏆 {{t.board}}</h2>
+      <ol id="board-list"></ol>
+      <div class="empty" id="board-empty">{{t.boardEmpty}}</div>
+    </section>
     <div class="tela" id="tela" hidden>
       <button id="tela-open" aria-label="{{t.openScreen}}"><img id="tela-img" alt="{{t.screenAlt}}"></button>
       <small>{{t.tapToZoom}}</small>
@@ -106,7 +149,14 @@
       const m = JSON.parse(e.data);
       if (m.type === "state") render(m.state);
       if (m.type === "burst") burst(m);
+      if (m.type === "you") {
+        me = m;
+        // placar zerado: o servidor esqueceu o nome; quem já tinha um entra de novo sozinho
+        if (!m.name && store.get("name")) ws.send(JSON.stringify({ type: "join", name: store.get("name"), cid }));
+        renderMe(); renderQuiz(); renderBoard();
+      }
     };
+    ws.addEventListener("open", () => { const n = store.get("name"); if (n) ws.send(JSON.stringify({ type: "join", name: n, cid })); });
   }
   function resync() {
     fetch("/state").then((r) => r.json()).then(render).catch(() => {});
@@ -150,7 +200,89 @@
     $("vote").hidden = !poll.open;
     markVote();
     if (opened && navigator.vibrate) navigator.vibrate(30);
+    if (s.quiz) { const fresh = s.quiz.phase === "open" && (quiz.phase !== "open" || quiz.id !== s.quiz.id); quiz = s.quiz; renderQuiz(); if (fresh && navigator.vibrate) navigator.vibrate(30); }
+    if (s.board) { board = s.board; renderBoard(); }
   }
+
+  // Quiz e placar. Texto sempre por textContent: a pergunta e os nomes vêm de fora.
+  let quiz = { id: 0, phase: "off", options: [], counts: [] }, board = { on: false, top: [] }, me = null, editingName = false;
+  const LETTERS = "ABCDEF";
+  const myName = () => (me && me.name) || store.get("name") || "";
+  function renderMe() {
+    const name = myName();
+    $("me").hidden = !name || editingName;
+    $("name").hidden = !!name && !editingName;
+    $("me-name").textContent = name;
+    const pts = me ? me.points : 0;
+    $("me-pts").textContent = pts + " " + CONFIG.t.yourPoints + (me && me.rank ? " · " + me.rank + "º " + CONFIG.t.yourRank : "");
+  }
+  function myAnswer() { const a = store.get("answer"); return a && a.id === quiz.id ? a.choice : null; }
+  function renderQuiz() {
+    $("quiz").hidden = quiz.phase === "off";
+    if (quiz.phase === "off") return;
+    $("quiz-q").textContent = quiz.question || CONFIG.t.quiz;
+    const mine = myAnswer(), reveal = quiz.phase === "reveal", named = !!myName();
+    $("quiz-opts").replaceChildren(...quiz.options.map((text, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.choice = i;
+      const letter = document.createElement("i"); letter.textContent = LETTERS[i] || i + 1;
+      const label = document.createElement("span"); label.textContent = text;
+      const count = document.createElement("small"); count.textContent = reveal ? (quiz.counts[i] || 0) : "";
+      b.append(letter, label, count);
+      b.disabled = reveal || mine !== null || !named;
+      if (mine === i) b.classList.add("mine");
+      if (reveal && i === quiz.answer) b.classList.add("right");
+      else if (reveal && mine === i) b.classList.add("wrong");
+      return b;
+    }));
+    const msg = $("quiz-msg");
+    if (!reveal) msg.textContent = !named ? CONFIG.t.quizNeedName : mine !== null ? CONFIG.t.quizSent : "";
+    else {
+      const r = me && me.quiz && me.quiz.id === quiz.id ? me.quiz : null;
+      const right = r ? r.correct : mine === null ? null : mine === quiz.answer;
+      msg.replaceChildren();
+      if (right === null) msg.textContent = CONFIG.t.quizNone;
+      else {
+        const b = document.createElement("b"); b.textContent = right ? CONFIG.t.quizRight : CONFIG.t.quizWrong;
+        msg.append(b);
+        if (r && r.gained) msg.append(" +" + r.gained + " " + CONFIG.t.yourPoints);
+      }
+    }
+  }
+  function renderBoard() {
+    $("board").hidden = !board.on;
+    if (!board.on) return;
+    const name = myName();
+    $("board-empty").hidden = board.top.length > 0;
+    $("board-list").replaceChildren(...board.top.map((p) => {
+      const li = document.createElement("li");
+      li.textContent = p.name;
+      const s = document.createElement("span"); s.textContent = p.points;
+      li.append(s);
+      if (p.name === name) li.classList.add("me-row");
+      return li;
+    }));
+  }
+  $("quiz-opts").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-choice]");
+    if (!b || b.disabled || quiz.phase !== "open" || !ws || ws.readyState !== 1) return;
+    const choice = Number(b.dataset.choice);
+    ws.send(JSON.stringify({ type: "answer", choice, cid }));
+    store.set("answer", { id: quiz.id, choice });
+    renderQuiz();
+    if (navigator.vibrate) navigator.vibrate(12);
+  });
+  $("name").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const n = $("name-input").value.replace(/\s+/g, " ").trim().slice(0, 24);
+    if (!n) return;
+    store.set("name", n);
+    editingName = false;
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "join", name: n, cid }));
+    renderMe(); renderQuiz();
+  });
+  $("me-change").addEventListener("click", () => { editingName = true; $("name-input").value = myName(); renderMe(); $("name-input").focus(); });
+  renderMe();
   function markVote() {
     const mine = store.get("vote");
     const choice = mine && mine.id === poll.id ? mine.choice : null;
