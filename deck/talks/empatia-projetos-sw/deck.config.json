@@ -1,0 +1,53 @@
+{
+  "title": "Empatia: entender o usuário antes de criar",
+  "description": "Sessão 02 de Projetos de Software (Turma 1): empatia, persona, mapa de empatia, entrevista exploratória e matriz CSD.",
+  "event": "Projetos de Software · Turma 1",
+  "lang": "pt-BR",
+  "timeZone": "America/Sao_Paulo",
+  "author": { "name": "Prof. Rodolfo", "tagline": "SENAI-SP · Agudos" },
+  "publicUrl": "",
+  "sourceUrl": "https://github.com/dorfusouza/talkinloop",
+  "reactions": [
+    { "id": "clap", "emoji": "👏", "label": "palmas" },
+    { "id": "heart", "emoji": "❤️", "label": "coração" },
+    { "id": "mind", "emoji": "🤯", "label": "mente explodindo" },
+    { "id": "think", "emoji": "🤔", "label": "pensando" },
+    { "id": "laugh", "emoji": "😂", "label": "risada" }
+  ],
+  "theme": {
+    "fontsUrl": "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap",
+    "fonts": { "display": "Bricolage Grotesque", "body": "IBM Plex Sans", "mono": "IBM Plex Mono" },
+    "dark": {
+      "bg": "#12151a",
+      "bgGlow": "#231c14",
+      "surface": "#1b2028",
+      "fg": "#f3efe8",
+      "muted": "#b3aca1",
+      "line": "#3a4350",
+      "accent": "#f5b84a",
+      "accentInk": "#1a1204",
+      "accentSoft": "#3b2b10",
+      "shine": "rgba(255, 214, 130, .22)",
+      "warn": "#f08a7a",
+      "ok": "#6cc48f",
+      "codeBg": "#0b1016",
+      "codeFg": "#e6edf3"
+    },
+    "light": {
+      "bg": "#faf7f2",
+      "bgGlow": "#ffffff",
+      "surface": "#ffffff",
+      "fg": "#1c1710",
+      "muted": "#5b5347",
+      "line": "#dcd3c4",
+      "accent": "#9a5b00",
+      "accentInk": "#ffffff",
+      "accentSoft": "#fbebcf",
+      "shine": "rgba(255, 255, 255, .7)",
+      "warn": "#b03e28",
+      "ok": "#2f7d4f",
+      "codeBg": "#17202b",
+      "codeFg": "#e6edf3"
+    }
+  }
+}
