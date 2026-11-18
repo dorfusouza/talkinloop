@@ -2,7 +2,9 @@
 # Como usar: no painel da Render, New > Blueprint, escolha este repositório e a branch abaixo.
 # A Render pergunta os valores marcados com `sync: false` (segredos e o endereço público).
 #
-# Trocar de aula: mude o valor de TALK em Environment e use Manual Deploy (a aula é montada na imagem).
+# Deploy automático: cada push na branch abaixo republica o serviço. O serviço reinicia e o placar do
+# quiz zera, então evite dar push durante a aula (o estado vive na memória).
+# Trocar de aula: mude o valor de TALK em Environment (a Render republica ao salvar) ou use Manual Deploy.
 # Plano `free`: o serviço dorme após cerca de 15 min sem tráfego (acordar leva cerca de 1 min) e o
 # placar do quiz some ao reiniciar, porque o estado vive na memória. Para aula ao vivo, abra o link
 # 10 minutos antes ou use um plano pago (sempre ligado).
@@ -16,7 +18,7 @@ services:
     dockerfilePath: ./backstage/Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
-    autoDeploy: false
+    autoDeploy: true
     envVars:
       # A aula: nome de uma pasta de deck/talks/ (vira argumento de build do Dockerfile).
       - key: TALK
