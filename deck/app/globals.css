@@ -304,10 +304,11 @@ pre.code .w { color: var(--warn); border-radius: 4px; }
 .demo-preview { display: grid; place-items: center; width: 100%; max-width: 1060px; aspect-ratio: 16 / 9; border: 4px dashed var(--line); border-radius: 14px; font: 600 64px var(--font-display), ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
 
 .remote {
-  position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto auto; gap: 10px;
+  position: fixed; inset: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; overscroll-behavior: contain;
   padding: calc(10px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
   background: var(--bg); -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
 }
+.remote > *, .rm-main > * { flex: none; }
 .remote header { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 12px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }
 .remote .pos { min-width: 0; font: 600 13px var(--font-mono), ui-monospace, Menlo, monospace; color: var(--accent); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .remote .status { justify-self: end; display: flex; align-items: center; gap: 6px; font: 500 12px var(--font-mono), ui-monospace, Menlo, monospace; color: var(--muted); }
@@ -320,7 +321,7 @@ pre.code .w { color: var(--warn); border-radius: 4px; }
 .remote .late { color: var(--warn); }
 .remote .early { color: var(--ok); }
 .remote .room { justify-self: end; font: 500 12px var(--font-mono), ui-monospace, Menlo, monospace; color: var(--muted); }
-.remote .script { overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; font-size: 19px; line-height: 1.5; user-select: text; -webkit-user-select: text; }
+.remote .script { flex: 1 1 96px; min-height: 96px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; font-size: 19px; line-height: 1.5; user-select: text; -webkit-user-select: text; }
 .remote .script h2 { font-size: 22px; margin: 2px 0 8px; }
 .remote .notes-text p, .remote .roteiro p, .remote .ato-intro p { margin: 0 0 12px; }
 :is(.remote, .notes) .roteiro .tela { font-size: 15px; font-style: italic; color: var(--muted); }
@@ -363,17 +364,31 @@ pre.code .w { color: var(--warn); border-radius: 4px; }
 .remote .nav .prev { background: var(--surface); border: 2px solid var(--line); color: var(--muted); }
 .remote .nav .next { background: var(--accent); color: var(--accent-ink); border: 0; }
 .remote.down .nav .next { opacity: .45; }
-/* No celular, .rm-main some da árvore e os filhos entram direto na grade de .remote (layout de sempre). */
+/* Coluna única (celular em pé): .rm-main some da árvore e os filhos entram direto na coluna de .remote.
+   O roteiro estica ou encolhe (mínimo 96px); se a tela for pequena demais, .remote rola e a navegação
+   fica colada no fundo. A prévia encolhe com a altura da tela. */
 .rm-main { display: contents; }
-/* Janela larga (notebook, desktop): duas colunas. À esquerda a prévia e os botões, à direita o roteiro.
-   A prévia respeita a altura da janela, para que os botões nunca saiam da tela nem fiquem por cima. */
-@media (min-width: 900px) and (min-aspect-ratio: 5/4) {
-  .remote { grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 20px; }
+.rm-preview { align-self: center; width: min(100%, calc((100dvh - 400px) * 16 / 9)); min-width: 200px; }
+.remote .nav { position: sticky; bottom: 0; z-index: 2; padding-top: 6px; background: var(--bg); }
+@media (max-height: 640px) {
+  .remote { gap: 8px; }
+  .remote .clock { font-size: 26px; }
+  .remote .tools button { min-height: 42px; }
+  .remote .nav button { min-height: 60px; font-size: 22px; }
+}
+/* Duas colunas: notebook ou celular deitado. À esquerda a prévia e os botões, à direita o roteiro.
+   A prévia respeita a altura da janela; se faltar altura, a coluna da esquerda rola e a navegação fica no fundo. */
+@media (min-width: 560px) and (min-aspect-ratio: 5/4) {
+  .remote { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 20px; overflow: hidden; }
   .remote header { grid-column: 1 / -1; }
-  .rm-main { display: grid; grid-column: 1; grid-row: 2; align-content: start; gap: 10px; min-height: 0; overflow: auto; }
-  .remote .script { grid-column: 2; grid-row: 2; }
-  .rm-preview { width: min(100%, calc((100dvh - 470px) * 16 / 9)); min-width: 360px; justify-self: center; }
+  .rm-main { display: flex; flex-direction: column; grid-column: 1; grid-row: 2; gap: 10px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .remote .script { grid-column: 2; grid-row: 2; min-height: 0; }
+  .rm-preview { width: min(100%, calc((100dvh - 440px) * 16 / 9)); min-width: 200px; }
   .remote .nav button { min-height: 68px; font-size: 22px; }
+}
+@media (min-width: 560px) and (min-aspect-ratio: 5/4) and (max-height: 640px) {
+  .remote .clock { font-size: 24px; }
+  .remote .nav button { min-height: 56px; }
 }
 
 .chrome .brand { position: absolute; left: 48px; bottom: 58px; display: grid; gap: 2px; }
