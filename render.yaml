@@ -1,0 +1,30 @@
+# Blueprint da Render: publica o Talk in Loop na internet, com um endereço fixo (nome.onrender.com).
+# Como usar: no painel da Render, New > Blueprint, escolha este repositório e a branch abaixo.
+# A Render pergunta os valores marcados com `sync: false` (segredos e o endereço público).
+#
+# Trocar de aula: mude o valor de TALK em Environment e use Manual Deploy (a aula é montada na imagem).
+# Plano `free`: o serviço dorme após cerca de 15 min sem tráfego (acordar leva cerca de 1 min) e o
+# placar do quiz some ao reiniciar, porque o estado vive na memória. Para aula ao vivo, abra o link
+# 10 minutos antes ou use um plano pago (sempre ligado).
+# Mantenha uma única instância: o estado de uma apresentação vive na memória de um processo.
+services:
+  - type: web
+    name: talkinloop
+    runtime: docker
+    plan: free
+    branch: feat/quiz-placar
+    dockerfilePath: ./backstage/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: false
+    envVars:
+      # A aula: nome de uma pasta de deck/talks/ (vira argumento de build do Dockerfile).
+      - key: TALK
+        value: empatia-projetos-sw
+      # Segredo de quem apresenta (12 caracteres ou mais). Quem tem o token comanda os slides.
+      # Defina no painel; não coloque no repositório.
+      - key: PRESENTER_TOKEN
+        sync: false
+      # Endereço público da plateia, por exemplo https://talkinloop.onrender.com
+      - key: PUBLIC_URL
+        sync: false
