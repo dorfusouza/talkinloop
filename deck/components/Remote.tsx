@@ -213,6 +213,7 @@ export default function Remote() {
         {nextSlide && <p className="next-up">{t.remote.nextUp} <b>{nextSlide.title}</b></p>}
       </section>
 
+      <div className="rm-main">
       <div
         ref={box}
         className={`rm-preview preview ${view?.black ? "black" : ""}`}
@@ -295,6 +296,7 @@ export default function Remote() {
         <button className="prev" onClick={() => key("ArrowLeft")} aria-label={t.remote.back}>◀</button>
         <button className="next" onClick={() => key("ArrowRight")} aria-label={t.remote.forwardLabel}>{t.remote.forward}</button>
       </nav>
+      </div>
     </div>
   );
 }

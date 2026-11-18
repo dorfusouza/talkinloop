@@ -363,6 +363,18 @@ pre.code .w { color: var(--warn); border-radius: 4px; }
 .remote .nav .prev { background: var(--surface); border: 2px solid var(--line); color: var(--muted); }
 .remote .nav .next { background: var(--accent); color: var(--accent-ink); border: 0; }
 .remote.down .nav .next { opacity: .45; }
+/* No celular, .rm-main some da árvore e os filhos entram direto na grade de .remote (layout de sempre). */
+.rm-main { display: contents; }
+/* Janela larga (notebook, desktop): duas colunas. À esquerda a prévia e os botões, à direita o roteiro.
+   A prévia respeita a altura da janela, para que os botões nunca saiam da tela nem fiquem por cima. */
+@media (min-width: 900px) and (min-aspect-ratio: 5/4) {
+  .remote { grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 20px; }
+  .remote header { grid-column: 1 / -1; }
+  .rm-main { display: grid; grid-column: 1; grid-row: 2; align-content: start; gap: 10px; min-height: 0; overflow: auto; }
+  .remote .script { grid-column: 2; grid-row: 2; }
+  .rm-preview { width: min(100%, calc((100dvh - 470px) * 16 / 9)); min-width: 360px; justify-self: center; }
+  .remote .nav button { min-height: 68px; font-size: 22px; }
+}
 
 .chrome .brand { position: absolute; left: 48px; bottom: 58px; display: grid; gap: 2px; }
 .chrome .brand b { font: 700 24px/1.1 var(--font-display), ui-sans-serif, system-ui, sans-serif; color: var(--fg); }
