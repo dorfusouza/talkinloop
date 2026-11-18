@@ -30,6 +30,7 @@ export default function Remote() {
   const [now, setNow] = useState(0);
   const cheers = useRef<{ t: number; n: number }[]>([]);
   const [heat, setHeat] = useState(0);
+  const [fsAsk, setFsAsk] = useState(false); // o navegador exige um clique no próprio telão para entrar em tela cheia
   const [mode, setMode] = useState<Mode>("laser");
   const modeRef = useRef<Mode>("laser");
   modeRef.current = mode;
@@ -274,8 +275,8 @@ export default function Remote() {
       )}
 
       <div className="tools pair">
-        <button className={view?.full ? "on" : ""} onClick={() => key("f")} aria-label={view?.full ? t.remote.exitFullscreenLabel : t.remote.fullscreenLabel}>
-          {view?.full ? t.remote.exitFullscreen : t.remote.fullscreen}
+        <button className={view?.full || fsAsk ? "on" : ""} onClick={() => { key("f"); if (!view?.full) { setFsAsk(true); setTimeout(() => setFsAsk(false), 8000); } }} aria-label={view?.full ? t.remote.exitFullscreenLabel : t.remote.fullscreenLabel}>
+          {view?.full ? t.remote.exitFullscreen : fsAsk ? t.remote.fullscreenAsk : t.remote.fullscreen}
         </button>
         <button className={room.share.on ? "on" : ""} onClick={() => { send({ type: "share", on: !room.share.on }); buzz(); }} aria-label={room.share.on ? t.remote.stopShareLabel : t.remote.shareLabel}>
           {room.share.on ? (room.share.v ? t.remote.sharing : t.remote.shareStarting) : t.remote.share}
